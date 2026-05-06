@@ -23,56 +23,75 @@ class ChessNetwork {
             this.isHost = true;
             this.playerColor = 'white';
 
-            // Use multiple PeerJS servers for redundancy
-            const peerConfig = {
-                host: '0.peerjs.com',
-                secure: true,
-                port: 443,
-                path: '/',
-                debug: 1,
-                config: {
-                    iceServers: [
-                        { urls: 'stun:stun.l.google.com:19302' },
-                        { urls: 'stun:stun1.l.google.com:19302' }
-                    ]
-                }
-            };
+            // Try multiple PeerJS servers
+            const servers = [
+                { host: '0.peerjs.com', port: 443, path: '/' },
+                { host: 'peerjs.mirotalk.org', port: 443, path: '/' },
+                { host: 'peerjs-server.herokuapp.com', port: 443, path: '/' }
+            ];
             
-            this.peer = new Peer(this.roomId, peerConfig);
-
-            this.peer.on('open', (id) => {
-                console.log('Room created:', id);
-                resolve(id);
-            });
-
-            this.peer.on('connection', (conn) => {
-                if (this.conn) {
-                    // Already have a connection, reject new one
-                    conn.send({ type: 'error', message: 'Room is full' });
-                    conn.close();
+            const tryServer = (index) => {
+                if (index >= servers.length) {
+                    reject(new Error('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้'));
                     return;
                 }
-
-                this.conn = conn;
-                this.setupConnection();
                 
-                // Send initial game state
-                conn.send({
-                    type: 'init',
-                    color: 'black',
-                    boardState: this.game.getBoardState()
+                const server = servers[index];
+                console.log('Trying server:', server.host);
+                
+                const peerConfig = {
+                    host: server.host,
+                    secure: true,
+                    port: server.port,
+                    path: server.path,
+                    debug: 2,
+                    config: {
+                        iceServers: [
+                            { urls: 'stun:stun.l.google.com:19302' },
+                            { urls: 'stun:stun1.l.google.com:19302' },
+                            { urls: 'stun:stun2.l.google.com:19302' }
+                        ]
+                    }
+                };
+                
+                this.peer = new Peer(this.roomId, peerConfig);
+
+                this.peer.on('open', (id) => {
+                    console.log('Room created:', id);
+                    resolve(id);
                 });
 
-                if (this.onConnectCallback) {
-                    this.onConnectCallback('black');
-                }
-            });
+                this.peer.on('connection', (conn) => {
+                    if (this.conn) {
+                        conn.send({ type: 'error', message: 'Room is full' });
+                        conn.close();
+                        return;
+                    }
 
-            this.peer.on('error', (err) => {
-                console.error('Peer error:', err);
-                if (this.onErrorCallback) this.onErrorCallback(err);
-                reject(err);
-            });
+                    this.conn = conn;
+                    this.setupConnection();
+                    
+                    conn.send({
+                        type: 'init',
+                        color: 'black',
+                        boardState: this.game.getBoardState()
+                    });
+
+                    if (this.onConnectCallback) {
+                        this.onConnectCallback('black');
+                    }
+                });
+
+                this.peer.on('error', (err) => {
+                    console.error('Peer error:', err);
+                    this.peer.destroy();
+                    tryServer(index + 1);
+                });
+            };
+            
+            tryServer(0);
+        });
+    }
         });
     }
 
@@ -81,53 +100,72 @@ class ChessNetwork {
             this.roomId = roomId;
             this.isHost = false;
 
-            const peerConfig = {
-                host: '0.peerjs.com',
-                secure: true,
-                port: 443,
-                path: '/',
-                debug: 1,
-                config: {
-                    iceServers: [
-                        { urls: 'stun:stun.l.google.com:19302' },
-                        { urls: 'stun:stun1.l.google.com:19302' }
-                    ]
+            const servers = [
+                { host: '0.peerjs.com', port: 443, path: '/' },
+                { host: 'peerjs.mirotalk.org', port: 443, path: '/' },
+                { host: 'peerjs-server.herokuapp.com', port: 443, path: '/' }
+            ];
+            
+            const tryServer = (index) => {
+                if (index >= servers.length) {
+                    reject(new Error('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้'));
+                    return;
                 }
+                
+                const server = servers[index];
+                console.log('Trying server:', server.host);
+                
+                const peerConfig = {
+                    host: server.host,
+                    secure: true,
+                    port: server.port,
+                    path: server.path,
+                    debug: 2,
+                    config: {
+                        iceServers: [
+                            { urls: 'stun:stun.l.google.com:19302' },
+                            { urls: 'stun:stun1.l.google.com:19302' },
+                            { urls: 'stun:stun2.l.google.com:19302' }
+                        ]
+                    }
+                };
+                
+                this.peer = new Peer(peerConfig);
+
+                this.peer.on('open', () => {
+                    this.conn = this.peer.connect(roomId, {
+                        reliable: true,
+                        serialization: 'json'
+                    });
+
+                    this.conn.on('open', () => {
+                        console.log('Connected to room:', roomId);
+                    });
+
+                    this.conn.on('data', (data) => {
+                        this.handleData(data);
+                    });
+
+                    this.conn.on('error', (err) => {
+                        console.error('Connection error:', err);
+                        if (this.onErrorCallback) this.onErrorCallback(err);
+                        reject(err);
+                    });
+
+                    this.conn.on('close', () => {
+                        console.log('Connection closed');
+                        if (this.onDisconnectCallback) this.onDisconnectCallback();
+                    });
+                });
+
+                this.peer.on('error', (err) => {
+                    console.error('Peer error:', err);
+                    this.peer.destroy();
+                    tryServer(index + 1);
+                });
             };
             
-            this.peer = new Peer(peerConfig);
-
-            this.peer.on('open', () => {
-                this.conn = this.peer.connect(roomId, {
-                    reliable: true,
-                    serialization: 'json'
-                });
-
-                this.conn.on('open', () => {
-                    console.log('Connected to room:', roomId);
-                });
-
-                this.conn.on('data', (data) => {
-                    this.handleData(data);
-                });
-
-                this.conn.on('error', (err) => {
-                    console.error('Connection error:', err);
-                    if (this.onErrorCallback) this.onErrorCallback(err);
-                    reject(err);
-                });
-
-                this.conn.on('close', () => {
-                    console.log('Connection closed');
-                    if (this.onDisconnectCallback) this.onDisconnectCallback();
-                });
-            });
-
-            this.peer.on('error', (err) => {
-                console.error('Peer error:', err);
-                if (this.onErrorCallback) this.onErrorCallback(err);
-                reject(err);
-            });
+            tryServer(0);
         });
     }
 

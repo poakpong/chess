@@ -315,6 +315,11 @@ class ChessApp {
         this.ctx.save();
         this.ctx.translate(cx, cy);
         
+        // If board is flipped, rotate piece back 180° so it appears upright to the player
+        if (this.flipped) {
+            this.ctx.rotate(Math.PI);
+        }
+        
         // Scale to fit cell (viewBox is 45x45)
         const scale = s * 0.8 / 45;
         this.ctx.scale(scale, scale);

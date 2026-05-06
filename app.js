@@ -183,37 +183,44 @@ class ChessApp {
         const x = (e.clientX - rect.left) * scaleX;
         const y = (e.clientY - rect.top) * scaleY;
         
-        const col = Math.floor(x / this.cellSize);
-        const row = Math.floor(y / this.cellSize);
+        let col = Math.floor(x / this.cellSize);
+        let row = Math.floor(y / this.cellSize);
 
-        // Flip board for black player (both play from bottom)
-        const actualRow = this.flipped ? 7 - row : row;
-        const actualCol = this.flipped ? 7 - col : col;
+        // If board is flipped (rotated 180°), we need to flip the click coordinates too
+        if (this.flipped) {
+            col = 7 - col;
+            row = 7 - row;
+        }
 
-        if (!this.game.isValidPosition(actualRow, actualCol)) return;
+        if (!this.game.isValidPosition(row, col)) return;
 
-        const piece = this.game.board[actualRow][actualCol];
+        const piece = this.game.board[row][col];
 
         // If no piece selected, try to select
         if (!this.selectedPiece) {
             if (piece && piece.color === this.game.currentPlayer) {
-                this.selectedPiece = { row: actualRow, col: actualCol };
-                this.validMoves = this.game.getValidMoves(actualRow, actualCol);
+                this.selectedPiece = { row: row, col: col };
+                this.validMoves = this.game.getValidMoves(row, col);
                 this.drawBoard();
-                this.highlightCell(row, col, '#FFD700'); // Gold highlight
+                // Highlight in screen coordinates
+                const highlightRow = this.flipped ? 7 - row : row;
+                const highlightCol = this.flipped ? 7 - col : col;
+                this.highlightCell(highlightRow, highlightCol, '#FFD700'); // Gold highlight
                 this.highlightValidMoves();
             }
         } else {
             // Try to move
-            const move = this.validMoves.find(m => m.row === actualRow && m.col === actualCol);
+            const move = this.validMoves.find(m => m.row === row && m.col === col);
             if (move) {
-                this.makeMove(this.selectedPiece.row, this.selectedPiece.col, actualRow, actualCol);
+                this.makeMove(this.selectedPiece.row, this.selectedPiece.col, row, col);
             } else if (piece && piece.color === this.game.currentPlayer) {
                 // Select different piece
-                this.selectedPiece = { row: actualRow, col: actualCol };
-                this.validMoves = this.game.getValidMoves(actualRow, actualCol);
+                this.selectedPiece = { row: row, col: col };
+                this.validMoves = this.game.getValidMoves(row, col);
                 this.drawBoard();
-                this.highlightCell(row, col, '#FFD700');
+                const highlightRow = this.flipped ? 7 - row : row;
+                const highlightCol = this.flipped ? 7 - col : col;
+                this.highlightCell(highlightRow, highlightCol, '#FFD700');
                 this.highlightValidMoves();
             } else {
                 // Deselect
@@ -250,33 +257,36 @@ class ChessApp {
 
     drawBoard() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        this.ctx.save();
+        
+        // If flipped (black player), rotate the entire board 180 degrees
+        if (this.flipped) {
+            this.ctx.translate(this.canvas.width, this.canvas.height);
+            this.ctx.rotate(Math.PI);
+        }
 
         // Draw squares
         for (let row = 0; row < 8; row++) {
             for (let col = 0; col < 8; col++) {
-                const displayRow = this.flipped ? 7 - row : row;
-                const displayCol = this.flipped ? 7 - col : col;
-                
-                const isLight = (displayRow + displayCol) % 2 === 0;
+                const isLight = (row + col) % 2 === 0;
                 this.ctx.fillStyle = isLight ? '#F0D9B5' : '#B58863';
                 this.ctx.fillRect(col * this.cellSize, row * this.cellSize, this.cellSize, this.cellSize);
 
-                // Draw coordinates - always show from white's perspective (rank 1 at bottom)
+                // Draw coordinates
                 if (col === 0) {
                     this.ctx.fillStyle = isLight ? '#B58863' : '#F0D9B5';
                     this.ctx.font = 'bold 12px Arial';
                     this.ctx.textAlign = 'left';
                     this.ctx.textBaseline = 'top';
-                    const rank = this.flipped ? row + 1 : 8 - row;
-                    this.ctx.fillText(String(rank), 3, row * this.cellSize + 3);
+                    this.ctx.fillText(String(8 - row), 3, row * this.cellSize + 3);
                 }
                 if (row === 7) {
                     this.ctx.fillStyle = isLight ? '#B58863' : '#F0D9B5';
                     this.ctx.font = 'bold 12px Arial';
                     this.ctx.textAlign = 'right';
                     this.ctx.textBaseline = 'bottom';
-                    const file = this.flipped ? 104 - col : 97 + col; // 'h' - col or 'a' + col
-                    this.ctx.fillText(String.fromCharCode(file), (col + 1) * this.cellSize - 3, this.canvas.height - 3);
+                    this.ctx.fillText(String.fromCharCode(97 + col), (col + 1) * this.cellSize - 3, this.canvas.height - 3);
                 }
             }
         }
@@ -284,9 +294,7 @@ class ChessApp {
         // Draw pieces
         for (let row = 0; row < 8; row++) {
             for (let col = 0; col < 8; col++) {
-                const boardRow = this.flipped ? 7 - row : row;
-                const boardCol = this.flipped ? 7 - col : col;
-                const piece = this.game.board[boardRow][boardCol];
+                const piece = this.game.board[row][col];
                 if (piece) {
                     this.drawPiece(piece, col * this.cellSize, row * this.cellSize);
                 }
@@ -296,63 +304,84 @@ class ChessApp {
         // Highlight king in check
         if (this.game.isInCheck(this.game.currentPlayer)) {
             const kingPos = this.game.kingPositions[this.game.currentPlayer];
-            const displayRow = this.flipped ? 7 - kingPos.row : kingPos.row;
-            const displayCol = this.flipped ? 7 - kingPos.col : kingPos.col;
-            this.highlightCell(displayRow, displayCol, '#FF0000', 0.5);
-        }
-    }
-
-    drawPiece(piece, x, y) {
-        const centerX = x + this.cellSize / 2;
-        const centerY = y + this.cellSize / 2;
-        const size = this.cellSize * 0.8;
-        
-        this.ctx.save();
-        this.ctx.translate(centerX, centerY);
-        this.ctx.scale(size / 48, size / 48);
-        
-        // Draw piece using text with proper styling
-        this.ctx.font = 'bold 48px "Segoe UI Symbol", "Apple Color Emoji", "Noto Color Emoji", sans-serif';
-        this.ctx.textAlign = 'center';
-        this.ctx.textBaseline = 'middle';
-        
-        if (piece.color === 'white') {
-            // White piece: solid fill with dark shadow for contrast
-            this.ctx.fillStyle = '#FFFFFF';
-            this.ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-            this.ctx.shadowBlur = 3;
-            this.ctx.shadowOffsetX = 1;
-            this.ctx.shadowOffsetY = 1;
-            this.ctx.fillText(this.game.getPieceSymbol(piece), 0, 0);
-        } else {
-            // Black piece: solid black with white outline for visibility on dark squares
-            this.ctx.fillStyle = '#1a1a1a';
-            this.ctx.shadowColor = 'rgba(255, 255, 255, 0.4)';
-            this.ctx.shadowBlur = 2;
-            this.ctx.shadowOffsetX = 0;
-            this.ctx.shadowOffsetY = 0;
-            this.ctx.fillText(this.game.getPieceSymbol(piece), 0, 0);
+            this.highlightCell(kingPos.row, kingPos.col, '#FF0000', 0.5);
         }
         
-        this.ctx.shadowColor = 'transparent';
         this.ctx.restore();
     }
 
+    drawPiece(piece, x, y) {
+        const cx = x + this.cellSize / 2;
+        const cy = y + this.cellSize / 2;
+        const s = this.cellSize;
+        
+        this.ctx.save();
+        this.ctx.translate(cx, cy);
+        
+        // Scale to fit cell
+        const scale = s * 0.85 / 48;
+        this.ctx.scale(scale, scale);
+        
+        // Draw filled piece with outline
+        if (piece.color === 'white') {
+            this.ctx.fillStyle = '#FFFFFF';
+            this.ctx.strokeStyle = '#333333';
+            this.ctx.lineWidth = 1.5;
+        } else {
+            this.ctx.fillStyle = '#1a1a1a';
+            this.ctx.strokeStyle = '#666666';
+            this.ctx.lineWidth = 1;
+        }
+        
+        // Get SVG path for piece
+        const path = new Path2D(this.getPieceSVGPath(piece.type));
+        this.ctx.fill(path);
+        this.ctx.stroke(path);
+        
+        this.ctx.restore();
+    }
+
+    getPieceSVGPath(type) {
+        // SVG paths for chess pieces - centered on 0,0, viewBox -24 -24 48 48
+        const paths = {
+            king: 'M-2,-18 L2,-18 L2,-12 L6,-12 L6,-8 L2,-8 L2,-4 Q8,-2 10,4 Q10,10 4,14 L4,18 L-4,18 L-4,14 Q-10,10 -10,4 Q-8,-2 -2,-4 L-2,-8 L-6,-8 L-6,-12 L-2,-12 Z',
+            queen: 'M-3,-18 L3,-18 L3,-14 L8,-10 L12,-16 L14,-14 L10,-8 L14,-4 L18,-10 L20,-8 L16,-2 L18,4 Q18,12 4,16 L4,20 L-4,20 L-4,16 Q-18,12 -18,4 L-16,-2 L-20,-8 L-18,-10 L-14,-4 L-10,-8 L-14,-14 L-12,-16 L-8,-10 L-3,-14 Z',
+            rook: 'M-8,-18 L8,-18 L8,-14 L12,-14 L12,-6 L8,-6 L8,14 L12,14 L12,18 L-12,18 L-12,14 L-8,14 L-8,-6 L-12,-6 L-12,-14 L-8,-14 Z',
+            bishop: 'M0,-20 Q8,-14 8,-6 Q8,2 0,8 Q-8,2 -8,-6 Q-8,-14 0,-20 M-4,8 L4,8 L6,18 L-6,18 Z',
+            knight: 'M-6,-18 L6,-18 L8,-10 Q14,-6 14,4 Q14,12 6,16 L6,20 L-6,20 L-6,14 Q-10,10 -10,4 Q-10,-2 -6,-6 L-8,-14 Z',
+            pawn: 'M0,-16 Q10,-10 10,0 Q10,10 0,16 Q-10,10 -10,0 Q-10,-10 0,-16 M-6,14 L6,14 L8,20 L-8,20 Z'
+        };
+        return paths[type] || '';
+    }
+
     highlightCell(row, col, color, alpha = 0.5) {
+        this.ctx.save();
         this.ctx.fillStyle = color;
         this.ctx.globalAlpha = alpha;
-        this.ctx.fillRect(col * this.cellSize, row * this.cellSize, this.cellSize, this.cellSize);
+        
+        // If flipped, we need to flip the highlight coordinates too
+        let drawRow = row;
+        let drawCol = col;
+        if (this.flipped) {
+            drawRow = 7 - row;
+            drawCol = 7 - col;
+        }
+        
+        this.ctx.fillRect(drawCol * this.cellSize, drawRow * this.cellSize, this.cellSize, this.cellSize);
         this.ctx.globalAlpha = 1;
+        this.ctx.restore();
     }
 
     highlightValidMoves() {
         for (const move of this.validMoves) {
+            // If flipped, flip the display coordinates
             const displayRow = this.flipped ? 7 - move.row : move.row;
             const displayCol = this.flipped ? 7 - move.col : move.col;
             
             const piece = this.game.board[move.row][move.col];
             if (piece) {
                 // Capture move - red circle
+                this.ctx.save();
                 this.ctx.strokeStyle = '#FF0000';
                 this.ctx.lineWidth = 3;
                 this.ctx.beginPath();
@@ -364,8 +393,10 @@ class ChessApp {
                     Math.PI * 2
                 );
                 this.ctx.stroke();
+                this.ctx.restore();
             } else {
                 // Normal move - green dot
+                this.ctx.save();
                 this.ctx.fillStyle = '#00AA00';
                 this.ctx.globalAlpha = 0.5;
                 this.ctx.beginPath();
@@ -377,7 +408,7 @@ class ChessApp {
                     Math.PI * 2
                 );
                 this.ctx.fill();
-                this.ctx.globalAlpha = 1;
+                this.ctx.restore();
             }
         }
     }

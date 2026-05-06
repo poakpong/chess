@@ -127,11 +127,20 @@ class ChessApp {
             return;
         }
 
+        const btn = document.getElementById('btn-join-room');
+        btn.textContent = '⏳ กำลังเข้า...';
+        btn.disabled = true;
+
         try {
+            console.log('Joining room:', roomId);
             await this.network.joinRoom(roomId);
+            console.log('Joined room successfully');
             window.location.hash = roomId;
         } catch (err) {
-            this.showMessage('❌ เข้าห้องไม่สำเร็จ: ห้องเต็มหรือไม่มีอยู่');
+            console.error('Join room error:', err);
+            this.showMessage('❌ เข้าห้องไม่สำเร็จ: ' + err.message);
+            btn.textContent = '🔗 เข้าร่วมห้อง';
+            btn.disabled = false;
         }
     }
 

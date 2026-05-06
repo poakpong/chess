@@ -80,15 +80,19 @@ class ChessNetwork {
                     this.conn = conn;
                     this.setupConnection();
                     
-                    conn.send({
-                        type: 'init',
-                        color: 'black',
-                        boardState: this.game.getBoardState()
-                    });
+                    // Wait for connection to open before sending
+                    conn.on('open', () => {
+                        console.log('Host: Connection opened, sending init');
+                        conn.send({
+                            type: 'init',
+                            color: 'black',
+                            boardState: this.game.getBoardState()
+                        });
 
-                    if (this.onConnectCallback) {
-                        this.onConnectCallback('black');
-                    }
+                        if (this.onConnectCallback) {
+                            this.onConnectCallback('black');
+                        }
+                    });
                 });
 
                 this.peer.on('error', (err) => {
@@ -140,28 +144,30 @@ class ChessNetwork {
                 this.peer = new Peer(peerConfig);
 
                 this.peer.on('open', () => {
+                    console.log('Joiner: Peer opened, connecting to room:', roomId);
                     this.conn = this.peer.connect(roomId, {
                         reliable: true,
                         serialization: 'json'
                     });
 
                     this.conn.on('open', () => {
-                        console.log('Connected to room:', roomId);
+                        console.log('Joiner: Connection opened to room:', roomId);
                         resolve();
                     });
 
                     this.conn.on('data', (data) => {
+                        console.log('Joiner received data:', data);
                         this.handleData(data);
                     });
 
                     this.conn.on('error', (err) => {
-                        console.error('Connection error:', err);
+                        console.error('Joiner connection error:', err);
                         if (this.onErrorCallback) this.onErrorCallback(err);
                         reject(err);
                     });
 
                     this.conn.on('close', () => {
-                        console.log('Connection closed');
+                        console.log('Joiner connection closed');
                         if (this.onDisconnectCallback) this.onDisconnectCallback();
                     });
                 });

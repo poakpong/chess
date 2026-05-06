@@ -39,8 +39,21 @@ class ChessApp {
         // Waiting screen
         document.getElementById('btn-copy-link').addEventListener('click', () => this.copyRoomLink());
 
-        // Game screen
+        // Game screen - mouse and touch
         this.canvas.addEventListener('click', (e) => this.handleCanvasClick(e));
+        this.canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = this.canvas.getBoundingClientRect();
+            const scaleX = this.canvas.width / rect.width;
+            const scaleY = this.canvas.height / rect.height;
+            
+            const mouseEvent = {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            };
+            this.handleCanvasClick(mouseEvent);
+        }, { passive: false });
         document.getElementById('btn-resign').addEventListener('click', () => this.resign());
         document.getElementById('btn-draw').addEventListener('click', () => this.offerDraw());
         document.getElementById('btn-new-game').addEventListener('click', () => this.newGame());

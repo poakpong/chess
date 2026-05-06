@@ -306,16 +306,8 @@ class ChessApp {
         this.ctx.textBaseline = 'middle';
         
         if (piece.color === 'white') {
-            // White piece: solid white fill with thick black outline
-            this.ctx.lineWidth = 3;
-            this.ctx.strokeStyle = '#000000';
+            // White piece: solid white fill only (no outline)
             this.ctx.fillStyle = '#FFFFFF';
-            this.ctx.lineJoin = 'round';
-            
-            // Draw multiple strokes for stronger outline
-            for (let i = 0; i < 3; i++) {
-                this.ctx.strokeText(symbol, centerX, centerY);
-            }
             this.ctx.fillText(symbol, centerX, centerY);
         } else {
             // Black piece: solid black with slight white glow for visibility
@@ -373,21 +365,30 @@ class ChessApp {
 
     updateUI() {
         const turnIndicator = document.getElementById('turn-indicator');
+        const myColor = this.network.playerColor || 'white';
+        
         if (this.game.gameOver) {
             turnIndicator.textContent = this.game.winner === 'draw' ? '🤝 เสมอ!' :
                 (this.game.winner === 'white' ? '⚪ ขาวชนะ!' : '⚫ ดำชนะ!');
         } else {
-            turnIndicator.textContent = this.game.currentPlayer === 'white' ? '⚪ ตาของขาว' : '⚫ ตาของดำ';
+            const isMyTurn = this.game.currentPlayer === myColor;
+            const playerLabel = isMyTurn ? '(คุณ)' : '(คู่แข่ง)';
+            turnIndicator.textContent = this.game.currentPlayer === 'white' 
+                ? `⚪ ตาของขาว ${playerLabel}` 
+                : `⚫ ตาของดำ ${playerLabel}`;
         }
 
-        // Update player names
-        const myColor = this.network.playerColor || 'white';
-        const opponentColor = myColor === 'white' ? 'black' : 'white';
+        // Update player names based on perspective
+        const whiteNameEl = document.getElementById('player-white').querySelector('.name');
+        const blackNameEl = document.getElementById('player-black').querySelector('.name');
         
-        document.getElementById('player-white').querySelector('.name').textContent = 
-            myColor === 'white' ? 'คุณ (ขาว)' : 'คู่ต่อสู้ (ขาว)';
-        document.getElementById('player-black').querySelector('.name').textContent = 
-            myColor === 'black' ? 'คุณ (ดำ)' : 'คู่ต่อสู้ (ดำ)';
+        if (myColor === 'white') {
+            whiteNameEl.textContent = 'คุณ (ขาว)';
+            blackNameEl.textContent = 'คู่แข่ง (ดำ)';
+        } else {
+            whiteNameEl.textContent = 'คู่แข่ง (ขาว)';
+            blackNameEl.textContent = 'คุณ (ดำ)';
+        }
     }
 
     updateMoveHistory() {

@@ -101,8 +101,6 @@ class ChessNetwork {
             tryServer(0);
         });
     }
-        });
-    }
 
     joinRoom(roomId) {
         return new Promise((resolve, reject) => {

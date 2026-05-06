@@ -293,20 +293,26 @@ class ChessApp {
 
     drawPiece(piece, x, y) {
         const symbol = this.game.getPieceSymbol(piece);
+        const centerX = x + this.cellSize / 2;
+        const centerY = y + this.cellSize / 2 + 2;
         
         this.ctx.font = '48px Arial';
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
         
-        // Draw outline/shadow for visibility
-        this.ctx.fillStyle = piece.color === 'white' ? '#333333' : '#CCCCCC';
-        this.ctx.globalAlpha = 0.4;
-        this.ctx.fillText(symbol, x + this.cellSize / 2 + 1, y + this.cellSize / 2 + 3);
-        this.ctx.globalAlpha = 1.0;
-        
-        // Draw piece
-        this.ctx.fillStyle = piece.color === 'white' ? '#FFFFFF' : '#000000';
-        this.ctx.fillText(symbol, x + this.cellSize / 2, y + this.cellSize / 2 + 2);
+        if (piece.color === 'white') {
+            // White piece: fill white + black outline
+            this.ctx.lineWidth = 2;
+            this.ctx.strokeStyle = '#000000';
+            this.ctx.fillStyle = '#FFFFFF';
+            
+            this.ctx.fillText(symbol, centerX, centerY);
+            this.ctx.strokeText(symbol, centerX, centerY);
+        } else {
+            // Black piece: solid black
+            this.ctx.fillStyle = '#000000';
+            this.ctx.fillText(symbol, centerX, centerY);
+        }
     }
 
     highlightCell(row, col, color, alpha = 0.5) {

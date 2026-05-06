@@ -100,14 +100,23 @@ class ChessApp {
     }
 
     async createRoom() {
+        const btn = document.getElementById('btn-create-room');
+        btn.textContent = '⏳ กำลังสร้าง...';
+        btn.disabled = true;
+        
         try {
+            console.log('Creating room...');
             const roomId = await this.network.createRoom();
+            console.log('Room created:', roomId);
             this.showScreen('waiting-screen');
             document.getElementById('room-id-display').textContent = roomId;
             document.getElementById('room-link').value = this.network.getRoomLink();
             window.location.hash = roomId;
         } catch (err) {
+            console.error('Create room error:', err);
             this.showMessage('❌ สร้างห้องไม่สำเร็จ: ' + err.message);
+            btn.textContent = '🎮 สร้างห้องใหม่';
+            btn.disabled = false;
         }
     }
 

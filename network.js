@@ -60,6 +60,15 @@ class ChessNetwork {
                     console.log('Room created:', id);
                     resolve(id);
                 });
+                
+                // Timeout if connection takes too long
+                setTimeout(() => {
+                    if (!this.peer || this.peer.disconnected) {
+                        console.log('Connection timeout, trying next server...');
+                        this.peer.destroy();
+                        tryServer(index + 1);
+                    }
+                }, 5000);
 
                 this.peer.on('connection', (conn) => {
                     if (this.conn) {

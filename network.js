@@ -147,6 +147,7 @@ class ChessNetwork {
 
                     this.conn.on('open', () => {
                         console.log('Connected to room:', roomId);
+                        resolve();
                     });
 
                     this.conn.on('data', (data) => {

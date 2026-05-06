@@ -23,14 +23,22 @@ class ChessNetwork {
             this.isHost = true;
             this.playerColor = 'white';
 
-            // Use free public PeerJS server
-            this.peer = new Peer(this.roomId, {
-                host: 'peerjs-server.herokuapp.com',
+            // Use multiple PeerJS servers for redundancy
+            const peerConfig = {
+                host: '0.peerjs.com',
                 secure: true,
                 port: 443,
                 path: '/',
-                debug: 1
-            });
+                debug: 1,
+                config: {
+                    iceServers: [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' }
+                    ]
+                }
+            };
+            
+            this.peer = new Peer(this.roomId, peerConfig);
 
             this.peer.on('open', (id) => {
                 console.log('Room created:', id);
@@ -73,13 +81,21 @@ class ChessNetwork {
             this.roomId = roomId;
             this.isHost = false;
 
-            this.peer = new Peer({
-                host: 'peerjs-server.herokuapp.com',
+            const peerConfig = {
+                host: '0.peerjs.com',
                 secure: true,
                 port: 443,
                 path: '/',
-                debug: 1
-            });
+                debug: 1,
+                config: {
+                    iceServers: [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' }
+                    ]
+                }
+            };
+            
+            this.peer = new Peer(peerConfig);
 
             this.peer.on('open', () => {
                 this.conn = this.peer.connect(roomId, {

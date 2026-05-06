@@ -65,6 +65,8 @@ class ChessApp {
     setupNetworkHandlers() {
         this.network.onConnect((color) => {
             console.log('Connected as', color);
+            // Both players see board from their perspective (bottom to top)
+            // White always sees white at bottom, black sees black at bottom
             this.flipped = color === 'black';
             this.showScreen('game-screen');
             this.startTimer();
@@ -175,13 +177,16 @@ class ChessApp {
         if (this.network.playerColor && this.game.currentPlayer !== this.network.playerColor) return;
 
         const rect = this.canvas.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
+        const scaleX = this.canvas.width / rect.width;
+        const scaleY = this.canvas.height / rect.height;
+        
+        const x = (e.clientX - rect.left) * scaleX;
+        const y = (e.clientY - rect.top) * scaleY;
         
         const col = Math.floor(x / this.cellSize);
         const row = Math.floor(y / this.cellSize);
 
-        // Flip board for black player
+        // Flip board for black player (both play from bottom)
         const actualRow = this.flipped ? 7 - row : row;
         const actualCol = this.flipped ? 7 - col : col;
 
@@ -301,17 +306,24 @@ class ChessApp {
         this.ctx.textBaseline = 'middle';
         
         if (piece.color === 'white') {
-            // White piece: fill white + black outline
-            this.ctx.lineWidth = 2;
+            // White piece: solid white fill with thick black outline
+            this.ctx.lineWidth = 3;
             this.ctx.strokeStyle = '#000000';
             this.ctx.fillStyle = '#FFFFFF';
+            this.ctx.lineJoin = 'round';
             
+            // Draw multiple strokes for stronger outline
+            for (let i = 0; i < 3; i++) {
+                this.ctx.strokeText(symbol, centerX, centerY);
+            }
             this.ctx.fillText(symbol, centerX, centerY);
-            this.ctx.strokeText(symbol, centerX, centerY);
         } else {
-            // Black piece: solid black
+            // Black piece: solid black with slight white glow for visibility
+            this.ctx.shadowColor = 'rgba(255, 255, 255, 0.3)';
+            this.ctx.shadowBlur = 2;
             this.ctx.fillStyle = '#000000';
             this.ctx.fillText(symbol, centerX, centerY);
+            this.ctx.shadowBlur = 0;
         }
     }
 

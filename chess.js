@@ -255,6 +255,25 @@ class ChessGame {
         return false;
     }
 
+    getBasicKingMoves(row, col, color) {
+        // Basic king moves without castling - used for attack checks
+        const moves = [];
+        for (let dr = -1; dr <= 1; dr++) {
+            for (let dc = -1; dc <= 1; dc++) {
+                if (dr === 0 && dc === 0) continue;
+                const newRow = row + dr;
+                const newCol = col + dc;
+                if (this.isValidPosition(newRow, newCol)) {
+                    const target = this.board[newRow][newCol];
+                    if (!target || target.color !== color) {
+                        moves.push({ row: newRow, col: newCol });
+                    }
+                }
+            }
+        }
+        return moves;
+    }
+
     getRawMoves(row, col) {
         const piece = this.board[row][col];
         if (!piece) return [];
@@ -271,9 +290,8 @@ class ChessGame {
             case 'queen':
                 return this.getQueenMoves(row, col, piece.color);
             case 'king':
-                // Exclude castling for attack checks
-                const moves = this.getKingMoves(row, col, piece.color);
-                return moves.filter(m => !m.castling);
+                // Use basic moves without castling to prevent infinite loop
+                return this.getBasicKingMoves(row, col, piece.color);
         }
         return [];
     }

@@ -217,6 +217,7 @@ body {
 
 .player-info .color {
     font-size: 2rem;
+    text-shadow: 0 0 10px rgba(255,255,255,0.8), 0 0 20px rgba(255,255,255,0.5);
 }
 
 .player-info .name {

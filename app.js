@@ -280,9 +280,19 @@ class ChessApp {
 
     drawPiece(piece, x, y) {
         const symbol = this.game.getPieceSymbol(piece);
+        
         this.ctx.font = '48px Arial';
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
+        
+        // Draw outline/shadow for visibility
+        this.ctx.fillStyle = piece.color === 'white' ? '#333333' : '#CCCCCC';
+        this.ctx.globalAlpha = 0.4;
+        this.ctx.fillText(symbol, x + this.cellSize / 2 + 1, y + this.cellSize / 2 + 3);
+        this.ctx.globalAlpha = 1.0;
+        
+        // Draw piece
+        this.ctx.fillStyle = piece.color === 'white' ? '#FFFFFF' : '#000000';
         this.ctx.fillText(symbol, x + this.cellSize / 2, y + this.cellSize / 2 + 2);
     }
 

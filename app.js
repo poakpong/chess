@@ -257,20 +257,26 @@ class ChessApp {
                 const displayRow = this.flipped ? 7 - row : row;
                 const displayCol = this.flipped ? 7 - col : col;
                 
-                const isLight = (row + col) % 2 === 0;
+                const isLight = (displayRow + displayCol) % 2 === 0;
                 this.ctx.fillStyle = isLight ? '#F0D9B5' : '#B58863';
                 this.ctx.fillRect(col * this.cellSize, row * this.cellSize, this.cellSize, this.cellSize);
 
-                // Draw coordinates
+                // Draw coordinates - always show from white's perspective (rank 1 at bottom)
                 if (col === 0) {
                     this.ctx.fillStyle = isLight ? '#B58863' : '#F0D9B5';
-                    this.ctx.font = '12px Arial';
-                    this.ctx.fillText(String(8 - displayRow), 2, row * this.cellSize + 14);
+                    this.ctx.font = 'bold 12px Arial';
+                    this.ctx.textAlign = 'left';
+                    this.ctx.textBaseline = 'top';
+                    const rank = this.flipped ? row + 1 : 8 - row;
+                    this.ctx.fillText(String(rank), 3, row * this.cellSize + 3);
                 }
                 if (row === 7) {
                     this.ctx.fillStyle = isLight ? '#B58863' : '#F0D9B5';
-                    this.ctx.font = '12px Arial';
-                    this.ctx.fillText(String.fromCharCode(97 + displayCol), col * this.cellSize + this.cellSize - 12, this.canvas.height - 2);
+                    this.ctx.font = 'bold 12px Arial';
+                    this.ctx.textAlign = 'right';
+                    this.ctx.textBaseline = 'bottom';
+                    const file = this.flipped ? 104 - col : 97 + col; // 'h' - col or 'a' + col
+                    this.ctx.fillText(String.fromCharCode(file), (col + 1) * this.cellSize - 3, this.canvas.height - 3);
                 }
             }
         }
@@ -278,9 +284,9 @@ class ChessApp {
         // Draw pieces
         for (let row = 0; row < 8; row++) {
             for (let col = 0; col < 8; col++) {
-                const displayRow = this.flipped ? 7 - row : row;
-                const displayCol = this.flipped ? 7 - col : col;
-                const piece = this.game.board[displayRow][displayCol];
+                const boardRow = this.flipped ? 7 - row : row;
+                const boardCol = this.flipped ? 7 - col : col;
+                const piece = this.game.board[boardRow][boardCol];
                 if (piece) {
                     this.drawPiece(piece, col * this.cellSize, row * this.cellSize);
                 }
@@ -297,26 +303,39 @@ class ChessApp {
     }
 
     drawPiece(piece, x, y) {
-        const symbol = this.game.getPieceSymbol(piece);
         const centerX = x + this.cellSize / 2;
-        const centerY = y + this.cellSize / 2 + 2;
+        const centerY = y + this.cellSize / 2;
+        const size = this.cellSize * 0.8;
         
-        this.ctx.font = '48px Arial';
+        this.ctx.save();
+        this.ctx.translate(centerX, centerY);
+        this.ctx.scale(size / 48, size / 48);
+        
+        // Draw piece using text with proper styling
+        this.ctx.font = 'bold 48px "Segoe UI Symbol", "Apple Color Emoji", "Noto Color Emoji", sans-serif';
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
         
         if (piece.color === 'white') {
-            // White piece: solid white fill only (no outline)
+            // White piece: solid fill with dark shadow for contrast
             this.ctx.fillStyle = '#FFFFFF';
-            this.ctx.fillText(symbol, centerX, centerY);
+            this.ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+            this.ctx.shadowBlur = 3;
+            this.ctx.shadowOffsetX = 1;
+            this.ctx.shadowOffsetY = 1;
+            this.ctx.fillText(this.game.getPieceSymbol(piece), 0, 0);
         } else {
-            // Black piece: solid black with slight white glow for visibility
-            this.ctx.shadowColor = 'rgba(255, 255, 255, 0.3)';
+            // Black piece: solid black with white outline for visibility on dark squares
+            this.ctx.fillStyle = '#1a1a1a';
+            this.ctx.shadowColor = 'rgba(255, 255, 255, 0.4)';
             this.ctx.shadowBlur = 2;
-            this.ctx.fillStyle = '#000000';
-            this.ctx.fillText(symbol, centerX, centerY);
-            this.ctx.shadowBlur = 0;
+            this.ctx.shadowOffsetX = 0;
+            this.ctx.shadowOffsetY = 0;
+            this.ctx.fillText(this.game.getPieceSymbol(piece), 0, 0);
         }
+        
+        this.ctx.shadowColor = 'transparent';
+        this.ctx.restore();
     }
 
     highlightCell(row, col, color, alpha = 0.5) {

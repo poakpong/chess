@@ -67,7 +67,9 @@ class ChessApp {
             console.log('Connected as', color);
             // Both players see board from their perspective (bottom to top)
             // White always sees white at bottom, black sees black at bottom
-            this.flipped = color === 'black';
+            // For 2-player mode: white is host (not flipped), black is joiner (flipped)
+            this.flipped = (color === 'black');
+            console.log('Board flipped:', this.flipped, 'for color:', color);
             this.showScreen('game-screen');
             this.startTimer();
             this.drawBoard();
@@ -180,17 +182,17 @@ class ChessApp {
         const scaleX = this.canvas.width / rect.width;
         const scaleY = this.canvas.height / rect.height;
         
-        const x = (e.clientX - rect.left) * scaleX;
-        const y = (e.clientY - rect.top) * scaleY;
+        let x = (e.clientX - rect.left) * scaleX;
+        let y = (e.clientY - rect.top) * scaleY;
         
-        let col = Math.floor(x / this.cellSize);
-        let row = Math.floor(y / this.cellSize);
-
-        // If board is flipped (rotated 180°), we need to flip the click coordinates too
+        // If board is flipped, flip the click coordinates to match the rotated board
         if (this.flipped) {
-            col = 7 - col;
-            row = 7 - row;
+            x = this.canvas.width - x;
+            y = this.canvas.height - y;
         }
+        
+        const col = Math.floor(x / this.cellSize);
+        const row = Math.floor(y / this.cellSize);
 
         if (!this.game.isValidPosition(row, col)) return;
 
@@ -202,10 +204,7 @@ class ChessApp {
                 this.selectedPiece = { row: row, col: col };
                 this.validMoves = this.game.getValidMoves(row, col);
                 this.drawBoard();
-                // Highlight in screen coordinates
-                const highlightRow = this.flipped ? 7 - row : row;
-                const highlightCol = this.flipped ? 7 - col : col;
-                this.highlightCell(highlightRow, highlightCol, '#FFD700'); // Gold highlight
+                this.highlightCell(row, col, '#FFD700'); // Gold highlight
                 this.highlightValidMoves();
             }
         } else {
@@ -218,9 +217,7 @@ class ChessApp {
                 this.selectedPiece = { row: row, col: col };
                 this.validMoves = this.game.getValidMoves(row, col);
                 this.drawBoard();
-                const highlightRow = this.flipped ? 7 - row : row;
-                const highlightCol = this.flipped ? 7 - col : col;
-                this.highlightCell(highlightRow, highlightCol, '#FFD700');
+                this.highlightCell(row, col, '#FFD700');
                 this.highlightValidMoves();
             } else {
                 // Deselect
@@ -318,19 +315,20 @@ class ChessApp {
         this.ctx.save();
         this.ctx.translate(cx, cy);
         
-        // Scale to fit cell
-        const scale = s * 0.85 / 48;
+        // Scale to fit cell (viewBox is 45x45)
+        const scale = s * 0.8 / 45;
         this.ctx.scale(scale, scale);
+        this.ctx.translate(-22.5, -22.5); // Center the 45x45 viewBox
         
         // Draw filled piece with outline
         if (piece.color === 'white') {
             this.ctx.fillStyle = '#FFFFFF';
-            this.ctx.strokeStyle = '#333333';
+            this.ctx.strokeStyle = '#000000';
             this.ctx.lineWidth = 1.5;
         } else {
             this.ctx.fillStyle = '#1a1a1a';
-            this.ctx.strokeStyle = '#666666';
-            this.ctx.lineWidth = 1;
+            this.ctx.strokeStyle = '#888888';
+            this.ctx.lineWidth = 1.5;
         }
         
         // Get SVG path for piece
@@ -342,14 +340,15 @@ class ChessApp {
     }
 
     getPieceSVGPath(type) {
-        // SVG paths for chess pieces - centered on 0,0, viewBox -24 -24 48 48
+        // Standard chess piece SVG paths from Wikimedia Commons (CC0)
+        // ViewBox: 0 0 45 45, centered and scaled
         const paths = {
-            king: 'M-2,-18 L2,-18 L2,-12 L6,-12 L6,-8 L2,-8 L2,-4 Q8,-2 10,4 Q10,10 4,14 L4,18 L-4,18 L-4,14 Q-10,10 -10,4 Q-8,-2 -2,-4 L-2,-8 L-6,-8 L-6,-12 L-2,-12 Z',
-            queen: 'M-3,-18 L3,-18 L3,-14 L8,-10 L12,-16 L14,-14 L10,-8 L14,-4 L18,-10 L20,-8 L16,-2 L18,4 Q18,12 4,16 L4,20 L-4,20 L-4,16 Q-18,12 -18,4 L-16,-2 L-20,-8 L-18,-10 L-14,-4 L-10,-8 L-14,-14 L-12,-16 L-8,-10 L-3,-14 Z',
-            rook: 'M-8,-18 L8,-18 L8,-14 L12,-14 L12,-6 L8,-6 L8,14 L12,14 L12,18 L-12,18 L-12,14 L-8,14 L-8,-6 L-12,-6 L-12,-14 L-8,-14 Z',
-            bishop: 'M0,-20 Q8,-14 8,-6 Q8,2 0,8 Q-8,2 -8,-6 Q-8,-14 0,-20 M-4,8 L4,8 L6,18 L-6,18 Z',
-            knight: 'M-6,-18 L6,-18 L8,-10 Q14,-6 14,4 Q14,12 6,16 L6,20 L-6,20 L-6,14 Q-10,10 -10,4 Q-10,-2 -6,-6 L-8,-14 Z',
-            pawn: 'M0,-16 Q10,-10 10,0 Q10,10 0,16 Q-10,10 -10,0 Q-10,-10 0,-16 M-6,14 L6,14 L8,20 L-8,20 Z'
+            king: 'M22.5 11.63V6M20 8h5M22.5 25s4.5-7.5 3-10.5c0 0-1-2.5-3-2.5s-3 2.5-3 2.5c-1.5 3 3 10.5 3 10.5M11.5 37c5.5 3.5 15.5 3.5 21 0v-7s9-4.5 6-10.5c-4-1-5 5-8 5-2 0-2-2-2-2V21h-2V11h-1V6.5c0-1-1-2-2-2s-2 1-2 2V11h-1v10h-2v5.5s0 2-2 2c-3 0-4-6-8-5-3 6 6 10.5 6 10.5v7z',
+            queen: 'M8 12a2 2 0 1 1-4 0 2 2 0 1 1 4 0M24.5 7.5a2 2 0 1 1-4 0 2 2 0 1 1 4 0M41 12a2 2 0 1 1-4 0 2 2 0 1 1 4 0M16 8.5a2 2 0 1 1-4 0 2 2 0 1 1 4 0M33 9a2 2 0 1 1-4 0 2 2 0 1 1 4 0M9 26c8.5-1.5 21-1.5 27 0l2-12-7 11V11l-5.5 13.5-3-15-3 15-5.5-13.5V25l-7-11zM9 26c0 2 1.5 2 2.5 4 1 2 1 1 .5 3.5-1.5 1-1.5 2.5-1.5 2.5-1.5 1.5.5 2.5.5 2.5 6.5 1 16.5 1 23 0 0 0 1.5-1 0-2.5 0 0 .5-1.5-1-2.5-.5-2.5-.5-1 .5-3.5 1-2 2.5-2 2.5-4-8.5-1.5-18.5-1.5-27 0z',
+            rook: 'M9 39h27v-3H9v3zM12 36v-4h21v4H12zM11 14V9h4v2h5V9h5v2h5V9h4v5M34 14l-3 3H14l-3-3M31 17v12.5H14V17M11 29.5v3h23v-3M31 32l-3 3H14l-3-3',
+            bishop: 'M9 36c3.39-.97 10.11.43 13.5-2 3.39 2.43 10.11 1.03 13.5 2 0 0 1.65.54 3 2-.68.97-1.65.99-3 .5-3.39-.97-10.11.46-13.5-1-3.39 1.46-10.11.03-13.5 1-1.35.49-2.32.47-3-.5 1.35-1.46 3-2 3-2zM15 32c2.5 2.5 12.5 2.5 15 0 .5-1.5 0-2 0-2 0-2.5-2.5-4-2.5-4 5.5-1.5 6-11.5-5-15.5-11 4-10.5 14-5 15.5 0 0-2.5 1.5-2.5 4 0 0-.5.5 0 2zM25 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 1 1 5 0z',
+            knight: 'M22 10c10.5 1 16.5 8 16 29H15c0-9 10-6.5 8-21M24 18c.38 2.91-5.55 7.37-8 9-3 2-2.82 4.34-5 4-1.042-.94 1.41-3.04 0-3-1 0 .19 1.23-1 2-1 0-4.003 1-4-4 0-2 6-12 6-12s1.89-1.9 2-3.5c-.73-.994-.5-2-.5-3 1-1 3 2.5 3 2.5h2s.78-1.992 2.5-3c1 0 1 3 1 3M8 28c0 0-1 1.5-1 2.5s1 1.5 1 1.5M14.5 24.5c0 0-2.5 1.5-2.5 3s2 2 2 2M10.5 26c0 0-1.5 1-1.5 2.5s1.5 1.5 1.5 1.5',
+            pawn: 'M22.5 9c-2.21 0-4 1.79-4 4 0 .89.29 1.71.78 2.38C17.33 16.5 16 18.59 16 21c0 2.03.94 3.84 2.41 5.03-3 1.06-7.41 5.66-7.41 13.47h23c0-7.81-4.41-12.41-7.41-13.47 1.47-1.19 2.41-3 2.41-5.03 0-2.41-1.33-4.5-3.28-5.62.49-.67.78-1.49.78-2.38 0-2.21-1.79-4-4-4z'
         };
         return paths[type] || '';
     }
@@ -359,7 +358,7 @@ class ChessApp {
         this.ctx.fillStyle = color;
         this.ctx.globalAlpha = alpha;
         
-        // If flipped, we need to flip the highlight coordinates too
+        // If flipped, we need to flip the highlight coordinates to match the rotated board
         let drawRow = row;
         let drawCol = col;
         if (this.flipped) {

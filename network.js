@@ -201,6 +201,10 @@ class ChessNetwork {
         });
     }
 
+    getPlayerColor() {
+        return this.playerColor;
+    }
+
     handleData(data) {
         console.log('Received:', data);
 

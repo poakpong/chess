@@ -434,9 +434,6 @@ class ChessGame {
             lastMove.promotion = pieceType;
         }
         
-        // Switch player after promotion
-        this.currentPlayer = this.currentPlayer === 'white' ? 'black' : 'white';
-        
         // Check game end after promotion
         this.checkGameEnd();
     }

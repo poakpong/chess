@@ -84,6 +84,7 @@ class ChessApp {
                     this.showGameOver('🤝 เสมอ!');
                 }
             } else if (move.type === 'promotion') {
+                // Opponent promoted their pawn - update the board
                 this.drawBoard();
                 this.updateUI();
                 this.updateMoveHistory();

@@ -57,6 +57,7 @@ class ChessApp {
         document.getElementById('btn-resign').addEventListener('click', () => this.resign());
         document.getElementById('btn-draw').addEventListener('click', () => this.offerDraw());
         document.getElementById('btn-new-game').addEventListener('click', () => this.newGame());
+        document.getElementById('btn-home').addEventListener('click', () => this.goHome());
 
         // Window resize
         window.addEventListener('resize', () => this.handleResize());
@@ -562,6 +563,46 @@ class ChessApp {
         this.startTimer();
         this.drawBoard();
         this.updateUI();
+    }
+
+    goHome() {
+        // Disconnect from network
+        if (this.network.conn) {
+            this.network.conn.close();
+        }
+        if (this.network.peer) {
+            this.network.peer.destroy();
+        }
+        
+        // Reset network
+        this.network = new ChessNetwork(this.game);
+        this.setupNetworkHandlers();
+        
+        // Reset game
+        this.game = new ChessGame();
+        this.selectedPiece = null;
+        this.validMoves = [];
+        this.flipped = false;
+        this.timers = { white: 600, black: 600 };
+        
+        // Stop timer
+        this.stopTimer();
+        
+        // Reset UI
+        document.getElementById('game-message').textContent = '';
+        document.getElementById('btn-resign').style.display = 'inline-block';
+        document.getElementById('btn-draw').style.display = 'inline-block';
+        document.getElementById('btn-new-game').style.display = 'none';
+        document.getElementById('move-list').innerHTML = '';
+        document.getElementById('captured-black').innerHTML = '';
+        document.getElementById('captured-white').innerHTML = '';
+        document.getElementById('room-input').value = '';
+        
+        // Clear URL hash
+        window.location.hash = '';
+        
+        // Show home screen
+        this.showScreen('home-screen');
     }
 
     showScreen(screenId) {

@@ -245,6 +245,13 @@ class ChessNetwork {
                 }
                 break;
 
+            case 'promotion':
+                this.game.promotePawn(data.row, data.col, data.pieceType);
+                if (this.onMoveCallback) {
+                    this.onMoveCallback({ type: 'promotion', row: data.row, col: data.col, pieceType: data.pieceType });
+                }
+                break;
+
             case 'error':
                 if (this.onErrorCallback) {
                     this.onErrorCallback(new Error(data.message));
@@ -282,6 +289,16 @@ class ChessNetwork {
         this.conn.send({
             type: 'draw',
             accepted: true
+        });
+    }
+
+    sendPromotion(row, col, pieceType) {
+        if (!this.conn) return;
+        this.conn.send({
+            type: 'promotion',
+            row: row,
+            col: col,
+            pieceType: pieceType
         });
     }
 

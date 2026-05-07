@@ -410,8 +410,8 @@ class ChessGame {
 
         // Check for pawn promotion
         if (piece.type === 'pawn' && (toRow === 0 || toRow === 7)) {
-            // Auto-promote to queen for simplicity
-            this.board[toRow][toCol] = { type: 'queen', color: piece.color };
+            // Return promotion info - will be handled by UI
+            return { promotion: true, row: toRow, col: toCol, color: piece.color };
         }
 
         // Switch player
@@ -421,6 +421,21 @@ class ChessGame {
         this.checkGameEnd();
 
         return true;
+    }
+
+    promotePawn(row, col, pieceType) {
+        const color = this.board[row][col].color;
+        this.board[row][col] = { type: pieceType, color: color };
+        
+        // Update move history notation
+        const lastMove = this.moveHistory[this.moveHistory.length - 1];
+        if (lastMove) {
+            lastMove.notation += '=' + pieceType.charAt(0).toUpperCase();
+            lastMove.promotion = pieceType;
+        }
+        
+        // Check game end after promotion
+        this.checkGameEnd();
     }
 
     getMoveNotation(fromRow, fromCol, toRow, toCol, piece, captured, special) {

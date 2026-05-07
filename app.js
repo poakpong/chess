@@ -83,6 +83,10 @@ class ChessApp {
                 if (move.accepted) {
                     this.showGameOver('🤝 เสมอ!');
                 }
+            } else if (move.type === 'promotion') {
+                this.drawBoard();
+                this.updateUI();
+                this.updateMoveHistory();
             } else {
                 this.drawBoard();
                 this.updateUI();
@@ -226,8 +230,14 @@ class ChessApp {
     }
 
     makeMove(fromRow, fromCol, toRow, toCol) {
-        const success = this.game.makeMove(fromRow, fromCol, toRow, toCol);
-        if (success) {
+        const result = this.game.makeMove(fromRow, fromCol, toRow, toCol);
+        if (result) {
+            // Check if promotion is needed
+            if (result.promotion) {
+                this.showPromotionModal(result.row, result.col, result.color);
+                return;
+            }
+
             // Send move to opponent
             if (this.network.conn) {
                 this.network.sendMove(fromRow, fromCol, toRow, toCol);
@@ -246,6 +256,53 @@ class ChessApp {
                     (this.game.winner === 'white' ? '⚪ ขาวชนะ!' : '⚫ ดำชนะ!');
                 this.showGameOver(message);
             }
+        }
+    }
+
+    showPromotionModal(row, col, color) {
+        const modal = document.getElementById('promotion-modal');
+        const buttons = modal.querySelectorAll('.promotion-btn');
+        
+        // Set piece symbols based on color
+        const symbols = {
+            queen: color === 'white' ? '♕' : '♛',
+            rook: color === 'white' ? '♖' : '♜',
+            bishop: color === 'white' ? '♗' : '♝',
+            knight: color === 'white' ? '♘' : '♞'
+        };
+        
+        buttons.forEach(btn => {
+            const piece = btn.dataset.piece;
+            btn.textContent = symbols[piece];
+            btn.onclick = () => {
+                this.promotePawn(row, col, piece);
+                modal.style.display = 'none';
+            };
+        });
+        
+        modal.style.display = 'flex';
+    }
+
+    promotePawn(row, col, pieceType) {
+        this.game.promotePawn(row, col, pieceType);
+        
+        // Send promotion to opponent
+        if (this.network.conn) {
+            this.network.sendPromotion(row, col, pieceType);
+        }
+
+        this.selectedPiece = null;
+        this.validMoves = [];
+        this.drawBoard();
+        this.updateUI();
+        this.updateMoveHistory();
+        this.updateCapturedPieces();
+        this.switchTimer();
+
+        if (this.game.gameOver) {
+            const message = this.game.winner === 'draw' ? 'เสมอ!' :
+                (this.game.winner === 'white' ? '⚪ ขาวชนะ!' : '⚫ ดำชนะ!');
+            this.showGameOver(message);
         }
     }
 

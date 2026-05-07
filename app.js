@@ -244,6 +244,8 @@ class ChessApp {
         if (result) {
             // Check if promotion is needed
             if (result.promotion) {
+                // Store the move info for later sending after promotion choice
+                this.pendingPromotion = { fromRow, fromCol, toRow, toCol, ...result };
                 this.showPromotionModal(result.row, result.col, result.color);
                 return;
             }
@@ -297,12 +299,21 @@ class ChessApp {
         console.log('Promoting pawn at', row, col, 'to', pieceType);
         this.game.promotePawn(row, col, pieceType);
         
-        // Send promotion to opponent with full data
-        if (this.network.conn) {
-            console.log('Sending promotion to opponent');
+        // Send the original move first, then promotion
+        if (this.network.conn && this.pendingPromotion) {
+            console.log('Sending move and promotion to opponent');
+            // Send the move that led to promotion
+            this.network.sendMove(
+                this.pendingPromotion.fromRow, 
+                this.pendingPromotion.fromCol, 
+                this.pendingPromotion.toRow, 
+                this.pendingPromotion.toCol
+            );
+            // Send promotion data
             this.network.sendPromotion(row, col, pieceType);
         }
 
+        this.pendingPromotion = null;
         this.selectedPiece = null;
         this.validMoves = [];
         this.drawBoard();

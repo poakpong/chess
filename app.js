@@ -87,6 +87,14 @@ class ChessApp {
                 this.drawBoard();
                 this.updateUI();
                 this.updateMoveHistory();
+                this.updateCapturedPieces();
+                this.switchTimer();
+                
+                if (this.game.gameOver) {
+                    const message = this.game.winner === 'draw' ? 'เสมอ!' :
+                        (this.game.winner === 'white' ? '⚪ ขาวชนะ!' : '⚫ ดำชนะ!');
+                    this.showGameOver(message);
+                }
             } else {
                 this.drawBoard();
                 this.updateUI();
@@ -286,7 +294,7 @@ class ChessApp {
     promotePawn(row, col, pieceType) {
         this.game.promotePawn(row, col, pieceType);
         
-        // Send promotion to opponent
+        // Send promotion to opponent (include the move that led to promotion)
         if (this.network.conn) {
             this.network.sendPromotion(row, col, pieceType);
         }

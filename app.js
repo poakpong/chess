@@ -295,7 +295,7 @@ class ChessApp {
     promotePawn(row, col, pieceType) {
         this.game.promotePawn(row, col, pieceType);
         
-        // Send promotion to opponent (include the move that led to promotion)
+        // Send promotion to opponent
         if (this.network.conn) {
             this.network.sendPromotion(row, col, pieceType);
         }

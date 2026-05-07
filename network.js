@@ -201,6 +201,34 @@ class ChessNetwork {
         });
     }
 
+    reconnect() {
+        return new Promise((resolve, reject) => {
+            if (!this.roomId) {
+                reject(new Error('No room ID to reconnect'));
+                return;
+            }
+
+            console.log('Attempting to reconnect to room:', this.roomId);
+            
+            // Clean up old connection
+            if (this.conn) {
+                this.conn.close();
+                this.conn = null;
+            }
+            if (this.peer) {
+                this.peer.destroy();
+                this.peer = null;
+            }
+
+            // Reconnect based on role
+            if (this.isHost) {
+                this.createRoom().then(resolve).catch(reject);
+            } else {
+                this.joinRoom(this.roomId).then(resolve).catch(reject);
+            }
+        });
+    }
+
     getPlayerColor() {
         return this.playerColor;
     }

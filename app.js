@@ -61,6 +61,29 @@ class ChessApp {
 
         // Window resize
         window.addEventListener('resize', () => this.handleResize());
+        
+        // Handle visibility change (when app goes to background/foreground)
+        document.addEventListener('visibilitychange', () => this.handleVisibilityChange());
+    }
+
+    handleVisibilityChange() {
+        if (document.visibilityState === 'visible') {
+            console.log('App became visible, checking connection...');
+            // Check if we're in a game and connection is lost
+            if (this.network.roomId && !this.network.conn) {
+                console.log('Connection lost, attempting to reconnect...');
+                this.showMessage('🔄 กำลังเชื่อมต่อใหม่...');
+                this.network.reconnect()
+                    .then(() => {
+                        console.log('Reconnected successfully');
+                        this.showMessage('✅ เชื่อมต่อใหม่สำเร็จ');
+                    })
+                    .catch((err) => {
+                        console.error('Reconnection failed:', err);
+                        this.showMessage('❌ เชื่อมต่อใหม่ไม่สำเร็จ');
+                    });
+            }
+        }
     }
 
     setupNetworkHandlers() {
@@ -113,8 +136,23 @@ class ChessApp {
         });
 
         this.network.onDisconnect(() => {
-            this.showMessage('❌ ต่อสายหลุด ผู้เล่นออกจากห้อง');
+            this.showMessage('❌ ต่อสายหลุด กำลังเชื่อมต่อใหม่...');
             this.stopTimer();
+            
+            // Auto reconnect after 2 seconds
+            setTimeout(() => {
+                if (this.network.roomId) {
+                    this.network.reconnect()
+                        .then(() => {
+                            this.showMessage('✅ เชื่อมต่อใหม่สำเร็จ');
+                            this.startTimer();
+                        })
+                        .catch((err) => {
+                            console.error('Auto reconnection failed:', err);
+                            this.showMessage('❌ เชื่อมต่อใหม่ไม่สำเร็จ กรุณากลับหน้าแรก');
+                        });
+                }
+            }, 2000);
         });
 
         this.network.onError((err) => {

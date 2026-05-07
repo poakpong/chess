@@ -297,7 +297,12 @@ class ChessApp {
     }
 
     drawPiece(piece, x, y) {
-        const symbol = this.game.getPieceSymbol(piece);
+        // Use black piece symbols for both colors, but apply different fill colors
+        const symbols = {
+            king: '♚', queen: '♛', rook: '♜', bishop: '♝', knight: '♞', pawn: '♟'
+        };
+        const symbol = symbols[piece.type];
+        
         const centerX = x + this.cellSize / 2;
         const centerY = y + this.cellSize / 2 + 2;
         
@@ -306,9 +311,16 @@ class ChessApp {
         this.ctx.textBaseline = 'middle';
         
         if (piece.color === 'white') {
-            // White piece: solid white fill only (no outline)
+            // White piece: use black symbol but fill with white + dark shadow for contrast
             this.ctx.fillStyle = '#FFFFFF';
+            this.ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
+            this.ctx.shadowBlur = 3;
+            this.ctx.shadowOffsetX = 1;
+            this.ctx.shadowOffsetY = 1;
             this.ctx.fillText(symbol, centerX, centerY);
+            this.ctx.shadowBlur = 0;
+            this.ctx.shadowOffsetX = 0;
+            this.ctx.shadowOffsetY = 0;
         } else {
             // Black piece: solid black with slight white glow for visibility
             this.ctx.shadowColor = 'rgba(255, 255, 255, 0.3)';

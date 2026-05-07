@@ -67,9 +67,7 @@ class ChessApp {
             console.log('Connected as', color);
             // Both players see board from their perspective (bottom to top)
             // White always sees white at bottom, black sees black at bottom
-            // For 2-player mode: white is host (not flipped), black is joiner (flipped)
-            this.flipped = (color === 'black');
-            console.log('Board flipped:', this.flipped, 'for color:', color);
+            this.flipped = color === 'black';
             this.showScreen('game-screen');
             this.startTimer();
             this.drawBoard();
@@ -182,40 +180,38 @@ class ChessApp {
         const scaleX = this.canvas.width / rect.width;
         const scaleY = this.canvas.height / rect.height;
         
-        let x = (e.clientX - rect.left) * scaleX;
-        let y = (e.clientY - rect.top) * scaleY;
-        
-        // If board is flipped, flip the click coordinates to match the rotated board
-        if (this.flipped) {
-            x = this.canvas.width - x;
-            y = this.canvas.height - y;
-        }
+        const x = (e.clientX - rect.left) * scaleX;
+        const y = (e.clientY - rect.top) * scaleY;
         
         const col = Math.floor(x / this.cellSize);
         const row = Math.floor(y / this.cellSize);
 
-        if (!this.game.isValidPosition(row, col)) return;
+        // Flip board for black player (both play from bottom)
+        const actualRow = this.flipped ? 7 - row : row;
+        const actualCol = this.flipped ? 7 - col : col;
 
-        const piece = this.game.board[row][col];
+        if (!this.game.isValidPosition(actualRow, actualCol)) return;
+
+        const piece = this.game.board[actualRow][actualCol];
 
         // If no piece selected, try to select
         if (!this.selectedPiece) {
             if (piece && piece.color === this.game.currentPlayer) {
-                this.selectedPiece = { row: row, col: col };
-                this.validMoves = this.game.getValidMoves(row, col);
+                this.selectedPiece = { row: actualRow, col: actualCol };
+                this.validMoves = this.game.getValidMoves(actualRow, actualCol);
                 this.drawBoard();
                 this.highlightCell(row, col, '#FFD700'); // Gold highlight
                 this.highlightValidMoves();
             }
         } else {
             // Try to move
-            const move = this.validMoves.find(m => m.row === row && m.col === col);
+            const move = this.validMoves.find(m => m.row === actualRow && m.col === actualCol);
             if (move) {
-                this.makeMove(this.selectedPiece.row, this.selectedPiece.col, row, col);
+                this.makeMove(this.selectedPiece.row, this.selectedPiece.col, actualRow, actualCol);
             } else if (piece && piece.color === this.game.currentPlayer) {
                 // Select different piece
-                this.selectedPiece = { row: row, col: col };
-                this.validMoves = this.game.getValidMoves(row, col);
+                this.selectedPiece = { row: actualRow, col: actualCol };
+                this.validMoves = this.game.getValidMoves(actualRow, actualCol);
                 this.drawBoard();
                 this.highlightCell(row, col, '#FFD700');
                 this.highlightValidMoves();
@@ -254,18 +250,13 @@ class ChessApp {
 
     drawBoard() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        
-        this.ctx.save();
-        
-        // If flipped (black player), rotate the entire board 180 degrees
-        if (this.flipped) {
-            this.ctx.translate(this.canvas.width, this.canvas.height);
-            this.ctx.rotate(Math.PI);
-        }
 
         // Draw squares
         for (let row = 0; row < 8; row++) {
             for (let col = 0; col < 8; col++) {
+                const displayRow = this.flipped ? 7 - row : row;
+                const displayCol = this.flipped ? 7 - col : col;
+                
                 const isLight = (row + col) % 2 === 0;
                 this.ctx.fillStyle = isLight ? '#F0D9B5' : '#B58863';
                 this.ctx.fillRect(col * this.cellSize, row * this.cellSize, this.cellSize, this.cellSize);
@@ -273,17 +264,13 @@ class ChessApp {
                 // Draw coordinates
                 if (col === 0) {
                     this.ctx.fillStyle = isLight ? '#B58863' : '#F0D9B5';
-                    this.ctx.font = 'bold 12px Arial';
-                    this.ctx.textAlign = 'left';
-                    this.ctx.textBaseline = 'top';
-                    this.ctx.fillText(String(8 - row), 3, row * this.cellSize + 3);
+                    this.ctx.font = '12px Arial';
+                    this.ctx.fillText(String(8 - displayRow), 2, row * this.cellSize + 14);
                 }
                 if (row === 7) {
                     this.ctx.fillStyle = isLight ? '#B58863' : '#F0D9B5';
-                    this.ctx.font = 'bold 12px Arial';
-                    this.ctx.textAlign = 'right';
-                    this.ctx.textBaseline = 'bottom';
-                    this.ctx.fillText(String.fromCharCode(97 + col), (col + 1) * this.cellSize - 3, this.canvas.height - 3);
+                    this.ctx.font = '12px Arial';
+                    this.ctx.fillText(String.fromCharCode(97 + displayCol), col * this.cellSize + this.cellSize - 12, this.canvas.height - 2);
                 }
             }
         }
@@ -291,7 +278,9 @@ class ChessApp {
         // Draw pieces
         for (let row = 0; row < 8; row++) {
             for (let col = 0; col < 8; col++) {
-                const piece = this.game.board[row][col];
+                const displayRow = this.flipped ? 7 - row : row;
+                const displayCol = this.flipped ? 7 - col : col;
+                const piece = this.game.board[displayRow][displayCol];
                 if (piece) {
                     this.drawPiece(piece, col * this.cellSize, row * this.cellSize);
                 }
@@ -301,91 +290,50 @@ class ChessApp {
         // Highlight king in check
         if (this.game.isInCheck(this.game.currentPlayer)) {
             const kingPos = this.game.kingPositions[this.game.currentPlayer];
-            this.highlightCell(kingPos.row, kingPos.col, '#FF0000', 0.5);
+            const displayRow = this.flipped ? 7 - kingPos.row : kingPos.row;
+            const displayCol = this.flipped ? 7 - kingPos.col : kingPos.col;
+            this.highlightCell(displayRow, displayCol, '#FF0000', 0.5);
         }
-        
-        this.ctx.restore();
     }
 
     drawPiece(piece, x, y) {
-        const cx = x + this.cellSize / 2;
-        const cy = y + this.cellSize / 2;
-        const s = this.cellSize;
+        const symbol = this.game.getPieceSymbol(piece);
+        const centerX = x + this.cellSize / 2;
+        const centerY = y + this.cellSize / 2 + 2;
         
-        this.ctx.save();
-        this.ctx.translate(cx, cy);
+        this.ctx.font = '48px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
         
-        // If board is flipped, rotate piece back 180° so it appears upright to the player
-        if (this.flipped) {
-            this.ctx.rotate(Math.PI);
-        }
-        
-        // Scale to fit cell (viewBox is 45x45)
-        const scale = s * 0.8 / 45;
-        this.ctx.scale(scale, scale);
-        this.ctx.translate(-22.5, -22.5); // Center the 45x45 viewBox
-        
-        // Draw filled piece with outline
         if (piece.color === 'white') {
+            // White piece: solid white fill only (no outline)
             this.ctx.fillStyle = '#FFFFFF';
-            this.ctx.strokeStyle = '#000000';
-            this.ctx.lineWidth = 1.5;
+            this.ctx.fillText(symbol, centerX, centerY);
         } else {
-            this.ctx.fillStyle = '#1a1a1a';
-            this.ctx.strokeStyle = '#888888';
-            this.ctx.lineWidth = 1.5;
+            // Black piece: solid black with slight white glow for visibility
+            this.ctx.shadowColor = 'rgba(255, 255, 255, 0.3)';
+            this.ctx.shadowBlur = 2;
+            this.ctx.fillStyle = '#000000';
+            this.ctx.fillText(symbol, centerX, centerY);
+            this.ctx.shadowBlur = 0;
         }
-        
-        // Get SVG path for piece
-        const path = new Path2D(this.getPieceSVGPath(piece.type));
-        this.ctx.fill(path);
-        this.ctx.stroke(path);
-        
-        this.ctx.restore();
-    }
-
-    getPieceSVGPath(type) {
-        // Standard chess piece SVG paths from Wikimedia Commons (CC0)
-        // ViewBox: 0 0 45 45, centered and scaled
-        const paths = {
-            king: 'M22.5 11.63V6M20 8h5M22.5 25s4.5-7.5 3-10.5c0 0-1-2.5-3-2.5s-3 2.5-3 2.5c-1.5 3 3 10.5 3 10.5M11.5 37c5.5 3.5 15.5 3.5 21 0v-7s9-4.5 6-10.5c-4-1-5 5-8 5-2 0-2-2-2-2V21h-2V11h-1V6.5c0-1-1-2-2-2s-2 1-2 2V11h-1v10h-2v5.5s0 2-2 2c-3 0-4-6-8-5-3 6 6 10.5 6 10.5v7z',
-            queen: 'M8 12a2 2 0 1 1-4 0 2 2 0 1 1 4 0M24.5 7.5a2 2 0 1 1-4 0 2 2 0 1 1 4 0M41 12a2 2 0 1 1-4 0 2 2 0 1 1 4 0M16 8.5a2 2 0 1 1-4 0 2 2 0 1 1 4 0M33 9a2 2 0 1 1-4 0 2 2 0 1 1 4 0M9 26c8.5-1.5 21-1.5 27 0l2-12-7 11V11l-5.5 13.5-3-15-3 15-5.5-13.5V25l-7-11zM9 26c0 2 1.5 2 2.5 4 1 2 1 1 .5 3.5-1.5 1-1.5 2.5-1.5 2.5-1.5 1.5.5 2.5.5 2.5 6.5 1 16.5 1 23 0 0 0 1.5-1 0-2.5 0 0 .5-1.5-1-2.5-.5-2.5-.5-1 .5-3.5 1-2 2.5-2 2.5-4-8.5-1.5-18.5-1.5-27 0z',
-            rook: 'M9 39h27v-3H9v3zM12 36v-4h21v4H12zM11 14V9h4v2h5V9h5v2h5V9h4v5M34 14l-3 3H14l-3-3M31 17v12.5H14V17M11 29.5v3h23v-3M31 32l-3 3H14l-3-3',
-            bishop: 'M9 36c3.39-.97 10.11.43 13.5-2 3.39 2.43 10.11 1.03 13.5 2 0 0 1.65.54 3 2-.68.97-1.65.99-3 .5-3.39-.97-10.11.46-13.5-1-3.39 1.46-10.11.03-13.5 1-1.35.49-2.32.47-3-.5 1.35-1.46 3-2 3-2zM15 32c2.5 2.5 12.5 2.5 15 0 .5-1.5 0-2 0-2 0-2.5-2.5-4-2.5-4 5.5-1.5 6-11.5-5-15.5-11 4-10.5 14-5 15.5 0 0-2.5 1.5-2.5 4 0 0-.5.5 0 2zM25 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 1 1 5 0z',
-            knight: 'M22 10c10.5 1 16.5 8 16 29H15c0-9 10-6.5 8-21M24 18c.38 2.91-5.55 7.37-8 9-3 2-2.82 4.34-5 4-1.042-.94 1.41-3.04 0-3-1 0 .19 1.23-1 2-1 0-4.003 1-4-4 0-2 6-12 6-12s1.89-1.9 2-3.5c-.73-.994-.5-2-.5-3 1-1 3 2.5 3 2.5h2s.78-1.992 2.5-3c1 0 1 3 1 3M8 28c0 0-1 1.5-1 2.5s1 1.5 1 1.5M14.5 24.5c0 0-2.5 1.5-2.5 3s2 2 2 2M10.5 26c0 0-1.5 1-1.5 2.5s1.5 1.5 1.5 1.5',
-            pawn: 'M22.5 9c-2.21 0-4 1.79-4 4 0 .89.29 1.71.78 2.38C17.33 16.5 16 18.59 16 21c0 2.03.94 3.84 2.41 5.03-3 1.06-7.41 5.66-7.41 13.47h23c0-7.81-4.41-12.41-7.41-13.47 1.47-1.19 2.41-3 2.41-5.03 0-2.41-1.33-4.5-3.28-5.62.49-.67.78-1.49.78-2.38 0-2.21-1.79-4-4-4z'
-        };
-        return paths[type] || '';
     }
 
     highlightCell(row, col, color, alpha = 0.5) {
-        this.ctx.save();
         this.ctx.fillStyle = color;
         this.ctx.globalAlpha = alpha;
-        
-        // If flipped, we need to flip the highlight coordinates to match the rotated board
-        let drawRow = row;
-        let drawCol = col;
-        if (this.flipped) {
-            drawRow = 7 - row;
-            drawCol = 7 - col;
-        }
-        
-        this.ctx.fillRect(drawCol * this.cellSize, drawRow * this.cellSize, this.cellSize, this.cellSize);
+        this.ctx.fillRect(col * this.cellSize, row * this.cellSize, this.cellSize, this.cellSize);
         this.ctx.globalAlpha = 1;
-        this.ctx.restore();
     }
 
     highlightValidMoves() {
         for (const move of this.validMoves) {
-            // If flipped, flip the display coordinates
             const displayRow = this.flipped ? 7 - move.row : move.row;
             const displayCol = this.flipped ? 7 - move.col : move.col;
             
             const piece = this.game.board[move.row][move.col];
             if (piece) {
                 // Capture move - red circle
-                this.ctx.save();
                 this.ctx.strokeStyle = '#FF0000';
                 this.ctx.lineWidth = 3;
                 this.ctx.beginPath();
@@ -397,10 +345,8 @@ class ChessApp {
                     Math.PI * 2
                 );
                 this.ctx.stroke();
-                this.ctx.restore();
             } else {
                 // Normal move - green dot
-                this.ctx.save();
                 this.ctx.fillStyle = '#00AA00';
                 this.ctx.globalAlpha = 0.5;
                 this.ctx.beginPath();
@@ -412,7 +358,7 @@ class ChessApp {
                     Math.PI * 2
                 );
                 this.ctx.fill();
-                this.ctx.restore();
+                this.ctx.globalAlpha = 1;
             }
         }
     }

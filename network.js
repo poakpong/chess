@@ -247,6 +247,7 @@ class ChessNetwork {
 
             case 'promotion':
                 // Apply promotion on opponent's board
+                console.log('Received promotion data:', data);
                 this.game.promotePawn(data.row, data.col, data.pieceType);
                 // Note: promotePawn already switches player in chess.js
                 if (this.onMoveCallback) {

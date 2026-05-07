@@ -85,6 +85,7 @@ class ChessApp {
                 }
             } else if (move.type === 'promotion') {
                 // Opponent promoted their pawn - update the board
+                console.log('Received promotion:', move);
                 this.drawBoard();
                 this.updateUI();
                 this.updateMoveHistory();
@@ -293,10 +294,12 @@ class ChessApp {
     }
 
     promotePawn(row, col, pieceType) {
+        console.log('Promoting pawn at', row, col, 'to', pieceType);
         this.game.promotePawn(row, col, pieceType);
         
-        // Send promotion to opponent
+        // Send promotion to opponent with full data
         if (this.network.conn) {
+            console.log('Sending promotion to opponent');
             this.network.sendPromotion(row, col, pieceType);
         }
 

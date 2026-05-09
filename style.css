@@ -117,6 +117,7 @@ body {
     border-radius: 8px;
     font-size: 1rem;
     text-align: center;
+    text-transform: uppercase;
 }
 
 .join-form input:focus {
